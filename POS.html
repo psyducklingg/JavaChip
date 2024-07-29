@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.3/dist/sweetalert2.all.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.3/dist/sweetalert2.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalnia+Glaze:wght@100..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kalnia+Glaze:wght@100..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Style+Script&display=swap" rel="stylesheet">
+
+    <style>
+      body {
+        font-family: Poppins, sans-serif;
+        text-align: center;
+        margin: auto;
+        background-image: url(https://png.pngtree.com/background/20230614/original/pngtree-bakery-with-a-lot-of-bread-and-pastries-picture-image_3496297.jpg);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+        background-size: 100% 100%;
+      }
+
+      button {
+        border-radius: 5px;
+        border-style: initial;
+        border-width: 4px;
+        box-shadow: rgba(25, 25, 25, .04) 0 0 1px 0, rgba(0, 0, 0, .1) 0 3px 4px 0;
+        font-family: Arial, sans-serif;
+        font-size: 18px;
+        font-style: bold;
+        color: white;
+        background-color: #fc6dab;
+        height: 50px;
+        width: 150px;
+        padding: 0 13px;
+        cursor: pointer;
+      }
+      h1 {
+        padding: 13px;
+        width: 100%;
+        height: 30px;
+        position: sticky;
+        top: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 999;
+        font-size: 30px;
+        color: white;
+        background-color: #fc6dab;
+        border-width: 2px;
+        margin: 0px;
+      }
+      h2 {
+        font-size: 30px;
+        font-family: "Kalnia Glaze";
+      }
+      #product-list {
+        padding: 10px;
+        background-color: rgba(67, 40, 24, 0.7);
+      }
+      #product-list table {
+        border-collapse: collapse;
+        margin: 0 auto;
+        width: 80%;
+      }
+      #product-list td {
+        padding: 10px;
+        text-align: center;
+      }
+      #cart-items {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      #cart-items li {
+        margin: 5px;
+        background-color: #fadde1;
+        border-radius: 5px;
+      }
+      .cart {
+        background-color: white;
+        padding: 10px;
+        border-radius: 10px;
+        margin: 20px;
+      }
+      .customConfirmButton {
+        background-color: #fc6dab;
+      }
+      .cartItem {
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .product-img-container {
+          position: relative;
+          display: inline-block;
+      }
+
+      .product-img {
+          cursor: pointer;
+          width: 100px;
+          height: 100px;
+      }
+
+      .product-name-label {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          background-color: rgba(255, 51, 153, 0.6);
+          width: 100%;
+          font-size: 11px;
+          padding: 2px 0;
+      }
+
+      .product-price-label {
+          position: absolute;
+          top: 0;
+          right: 0;
+          background-color: rgba(255, 51, 153, 0.6);
+          width: 40%;
+          font-size: 12px;
+          padding: 2px 0;
+      }
+
+
+      @media print {
+        #product-list, .cart, #mainHeader {
+          display: none;
+        }
+        #receipt {
+          display: block;
+        }
+      }
+
+    </style>
+    <script>
+      let cart = [];
+      let total = 0;
+
+      async function getQuantity() {
+        const alert = await Swal.fire({
+          title: "Enter product quantity",
+          input: "text",
+          showCancelButton: true,
+          customClass: {
+            confirmButton: 'customConfirmButton'
+          }
+        });
+        if (alert.isDismissed) {
+          return 'dismissed';
+        }
+        return alert.value;
+      }
+
+      function addItem(productId, productName, price) {
+        getQuantity().then(quantity => {
+          if (quantity === 'dismissed') {
+            return;
+          } else if (quantity === null || isNaN(quantity) || quantity <= 0 || quantity > 100 || quantity % 1 !== 0) {
+            Swal.fire({
+              icon: "error",
+              title: "Oops...",
+              text: "Invalid quantity entered!",
+              customClass: {
+                confirmButton: 'customConfirmButton'
+              }
+            });
+            return;
+          }
+          cart.push({ productId, productName, price, quantity: Number(quantity) });
+          updateCart();
+        }).catch(error => {
+          console.error('Oh no error :C', error);
+        });
+      }
+
+      function removeItem(productId) {
+        const index = cart.findIndex(item => item.productId === productId);
+        if (index !== -1) {
+          cart.splice(index, 1);
+          updateCart();
+        } else {
+          console.log("ProductId not found. How does this even happen lmao");
+        }
+      }
+
+      function updateCart() {
+        const cartItems = document.getElementById('cart-items');
+        cartItems.innerHTML = '';
+        total = 0;
+        cart.forEach(item => {
+          const li = document.createElement('li');
+          const removeButton = document.createElement('button');
+          li.textContent = `${item.productName} - $${item.price} x ${item.quantity}      `;
+          li.className = 'cartItem';
+          removeButton.textContent = "Remove Item";
+          removeButton.onclick = () => removeItem(item.productId);
+          li.appendChild(removeButton);
+          cartItems.appendChild(li);
+
+          total += item.price * item.quantity;
+        });
+
+        document.getElementById('total').textContent = total.toFixed(2);
+      }
+
+      function checkout() {
+        if (total > 0) {
+          let checkoutHtml = `
+            <table style="width: 100%; text-align:left;">
+            <thead>
+            <tr>
+              <th>Item</th>
+              <th>Quantity</th>
+              <th>Subtotal</th>
+            </tr>
+            </thead>
+            <tbody>
+          `;
+
+          cart.forEach(item => {
+            const subtotal = (item.price * item.quantity).toFixed(2);
+            checkoutHtml += `
+              <tr>
+                <td>${item.productName}</td>
+                <td>${item.quantity}</td>
+                <td>$${subtotal}</td>
+              </tr>
+            `;
+          });
+
+          checkoutHtml += `
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="2">Total</td>
+                  <td>$${total.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
+            <div>
+              <label for="tenderedAmount"><b>Tendered Amount:</b></label>
+              <input type="text" id="tenderedAmount" style="width: 40%; margin-top: 10px;">
+              <p id="change">Change: $0.00</p>
+            </div>
+          `;
+
+          Swal.fire({
+            title: 'Checkout',
+            html: checkoutHtml,
+            showCancelButton: true,
+            confirmButtonText: 'Confirm',
+            cancelButtonText: 'Cancel',
+            customClass: {
+              confirmButton: 'customConfirmButton'
+            },
+            preConfirm: () => {
+              const tenderedAmount = document.getElementById('tenderedAmount').value;
+              if (!tenderedAmount || isNaN(tenderedAmount) || tenderedAmount < total) {
+                Swal.showValidationMessage('Please enter a valid tendered amount greater than or equal to the total amount');
+                return false;
+              }
+              return tenderedAmount;
+            }
+          }).then((result) => {
+            if (result.isConfirmed) {
+              const tenderedAmount = parseFloat(result.value);
+
+              if (!isNaN(tenderedAmount) && tenderedAmount >= total) {
+                const change = (tenderedAmount - total).toFixed(2);
+
+                Swal.fire({
+                  icon: "success",
+                  title: 'Purchase Completed',
+                  customClass: {
+                    confirmButton: 'customConfirmButton'
+                  }
+                }).then(() => {
+                  printReceipt(tenderedAmount, change);
+                  confirmCheckout();
+                });
+              } else {
+                Swal.fire({
+                  icon: "error",
+                  title: "Invalid Amount",
+                  text: "Please enter a valid tendered amount.",
+                  customClass: {
+                    confirmButton: 'customConfirmButton'
+                  }
+                });
+              }
+            }
+          });
+
+          document.getElementById('tenderedAmount').addEventListener('input', (event) => {
+            const tenderedAmount = parseFloat(event.target.value);
+            if (!isNaN(tenderedAmount) && tenderedAmount >= total) {
+              const change = (tenderedAmount - total).toFixed(2);
+              document.getElementById('change').textContent = `Change: $${change}`;
+            } else {
+              document.getElementById('change').textContent = `Change: $0.00`;
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Oops...",
+            text: "Cart is empty!",
+            customClass: {
+              confirmButton: 'customConfirmButton'
+            }
+          });
+        }
+      }
+
+
+      function confirmCheckout() {
+        if (total > 0) {
+          google.script.run.recordTransaction({
+            productId: cart.map(item => item.productId).join(', '),
+            productName: cart.map(item => item.productName).join(', '),
+            quantity: cart.map(item => item.quantity).join(', '),
+            totalPrice: total
+          });
+
+          cart = [];
+          updateCart();
+          const checkoutItems = document.getElementById('checkout-items');
+          checkoutItems.innerHTML = ''; // Clear the checkout items
+          document.getElementById('checkout-total').textContent = '';
+        }
+      }
+
+      function printDiv(divName) {
+        const printContents = document.getElementById(divName).innerHTML;
+        const w = window.open();
+        w.document.write(printContents);
+        w.print();
+        w.close();
+      }
+
+      function printReceipt(tenderedAmount, change) {
+        let receiptHtml = `
+          <div id="receipt-content">
+          <h2>Java Chip Bakery Receipt</h2>
+          <table style="width: 100%; text-align: left;">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        cart.forEach(item => {
+          const subtotal = (item.price * item.quantity).toFixed(2);
+          receiptHtml += `
+            <tr>
+              <td>${item.productName}</td>
+              <td>${item.quantity}</td>
+              <td>$${subtotal}</td>
+            </tr>
+          `;
+        });
+
+        receiptHtml += `
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2">Total</td>
+                <td>$${total.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td colspan="2">Tendered Amount</td>
+                <td>$${tenderedAmount.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td colspan="2">Change</td>
+                <td>$${change}</td>
+              </tr>
+            </tfoot>
+          </table>
+          </div>
+        `;
+
+        Swal.fire({
+          html: receiptHtml,
+          showCancelButton: true,
+          confirmButtonText: 'Print',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'customConfirmButton'
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            printDiv('receipt-content');
+          }
+        });
+      }
+
+      function loadProducts() {
+        google.script.run.withSuccessHandler(products => {
+            const productContainer = document.getElementById('product-list');
+            productContainer.innerHTML = ''; // Clear html inside
+
+            const title = document.createElement('h2');
+            title.innerHTML = "Product List";
+            const table = document.createElement('table');
+            let row;
+
+            products.forEach((product, index) => {
+                if (index % 5 === 0) {
+                    row = document.createElement('tr');
+                    table.appendChild(row);
+                }
+                const [productId, productName, price, imageUrl] = product;
+
+                const cell = document.createElement('td');
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'product-img-container';
+
+                const img = document.createElement('img');
+                img.src = imageUrl; // Use base64 encoded image
+                img.alt = productName;
+                img.className = 'product-img';
+                
+                img.onclick = () => addItem(productId, productName, price);
+
+                const nameLabel = document.createElement('div');
+                nameLabel.innerHTML = productName;
+                nameLabel.className = 'product-name-label';
+
+                const priceLabel = document.createElement('div');
+                priceLabel.innerHTML = `$${price.toFixed(2)}`;
+                priceLabel.className = 'product-price-label';
+
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(nameLabel);
+                imgContainer.appendChild(priceLabel);
+                cell.appendChild(imgContainer);
+                row.appendChild(cell);
+            });
+            productContainer.appendChild(title);
+            productContainer.appendChild(table);
+        }).getProducts();
+     }
+
+
+      document.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+  </head>
+  <header id="mainHeader">
+    <h1>Java Chip Bakery POS System</h1>
+  </header>
+  <body>
+    <div id="product-list">
+      <p style="font-size: 18px; font-family: Baskerville; color: white; font-style: italic">Loading product list...</p>
+    </div>
+    <br>
+    <div class="cart">
+      <h2>Cart</h2>
+      <ul id="cart-items"></ul>
+      <p><b>Total: $<span id="total">0</span></b></p>
+      <button onclick="checkout()"><b>Checkout</b></button>
+    </div>
+    <div id="receipt" style="display: none;"></div>
+  </body>
+</html>
